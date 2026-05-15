@@ -119,6 +119,7 @@ export default function AiResultPage() {
   }
 
   function renderStep() {
+    const r = result!
     switch (currentStepId) {
       case 'postit':
         return (
@@ -134,24 +135,24 @@ export default function AiResultPage() {
               <div className="postit-card rotate-1 relative">
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-8 h-3 bg-amber-200 rounded-b-full opacity-60" />
                 <div className="flex flex-wrap items-center gap-2 mb-3">
-                  {result.taskType && (
+                  {r.taskType && (
                     <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-medium">
-                      {TASK_TYPE_LABEL[result.taskType] ?? result.taskType}
+                      {TASK_TYPE_LABEL[r.taskType] ?? r.taskType}
                     </span>
                   )}
-                  {result.difficultyLevel && (
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${DIFFICULTY[result.difficultyLevel]?.color ?? ''}`}>
-                      {DIFFICULTY[result.difficultyLevel]?.text}
+                  {r.difficultyLevel && (
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${DIFFICULTY[r.difficultyLevel]?.color ?? ''}`}>
+                      {DIFFICULTY[r.difficultyLevel]?.text}
                     </span>
                   )}
-                  {result.estimatedStartTime && (
+                  {r.estimatedStartTime && (
                     <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium ml-auto">
-                      ⏱ {result.estimatedStartTime}
+                      ⏱ {r.estimatedStartTime}
                     </span>
                   )}
                 </div>
-                <p className="text-slate-800 text-xl font-bold leading-snug">{result.finalPostitSentence}</p>
-                <p className="text-amber-700 text-xs mt-3 opacity-80">{result.reason}</p>
+                <p className="text-slate-800 text-xl font-bold leading-snug">{r.finalPostitSentence}</p>
+                <p className="text-amber-700 text-xs mt-3 opacity-80">{r.reason}</p>
               </div>
             </div>
           </div>
@@ -161,14 +162,14 @@ export default function AiResultPage() {
         return (
           <div className="space-y-4">
             <p className="text-xs text-slate-400 uppercase tracking-wide font-medium">오늘 바로 할 수 있는 것들</p>
-            <MiniPostit sentence={result.finalPostitSentence} />
+            <MiniPostit sentence={r.finalPostitSentence} />
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <span className="text-lg">⭐</span>
-                <p className="text-slate-800 font-semibold">{result.recommendedTask}</p>
+                <p className="text-slate-800 font-semibold">{r.recommendedTask}</p>
               </div>
               <ul className="space-y-2 pl-1">
-                {result.immediateTasks.map((task, i) => (
+                {r.immediateTasks.map((task, i) => (
                   <li key={i} className="flex items-start gap-2.5 text-sm text-slate-600 bg-white rounded-xl p-3 border border-slate-100">
                     <span className="text-amber-400 mt-0.5 flex-shrink-0">▸</span>
                     <span>{task}</span>
@@ -183,12 +184,12 @@ export default function AiResultPage() {
         return (
           <div className="space-y-4">
             <p className="text-xs text-slate-400 uppercase tracking-wide font-medium">그것도 어렵다면?</p>
-            <MiniPostit sentence={result.finalPostitSentence} />
+            <MiniPostit sentence={r.finalPostitSentence} />
             <div className="flex items-start gap-3 bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
               <span className="text-3xl flex-shrink-0">🪜</span>
               <div>
                 <p className="text-xs text-slate-400 mb-1.5">대신 이것만</p>
-                <p className="text-slate-800 font-bold text-lg leading-snug">{result.backupTinyAction}</p>
+                <p className="text-slate-800 font-bold text-lg leading-snug">{r.backupTinyAction}</p>
               </div>
             </div>
           </div>
@@ -198,10 +199,10 @@ export default function AiResultPage() {
         return (
           <div className="space-y-4">
             <p className="text-xs text-slate-400 uppercase tracking-wide font-medium">방해받을 때를 대비해서</p>
-            <MiniPostit sentence={result.finalPostitSentence} />
+            <MiniPostit sentence={r.finalPostitSentence} />
             <div className="flex items-start gap-3 bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
               <span className="text-3xl flex-shrink-0">🔄</span>
-              <p className="text-slate-700 leading-relaxed">{result.ifThenPlan}</p>
+              <p className="text-slate-700 leading-relaxed">{r.ifThenPlan}</p>
             </div>
           </div>
         )
@@ -210,10 +211,10 @@ export default function AiResultPage() {
         return (
           <div className="space-y-4">
             <p className="text-xs text-slate-400 uppercase tracking-wide font-medium">끝나면 이걸 받기로 해요</p>
-            <MiniPostit sentence={result.finalPostitSentence} />
+            <MiniPostit sentence={r.finalPostitSentence} />
             <div className="flex items-start gap-3 bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
               <span className="text-3xl flex-shrink-0">🎁</span>
-              <p className="text-slate-700 leading-relaxed">{result.rewardSuggestion}</p>
+              <p className="text-slate-700 leading-relaxed">{r.rewardSuggestion}</p>
             </div>
           </div>
         )
@@ -226,7 +227,7 @@ export default function AiResultPage() {
               <p className="text-sm text-slate-500 mt-1">지금은 아니에요. 일단 보관만 해요.</p>
             </div>
             <ul className="space-y-2">
-              {result.laterTasks.map((task, i) => (
+              {r.laterTasks.map((task, i) => (
                 <li key={i} className="flex items-start gap-2.5 text-sm text-slate-400 bg-white rounded-xl p-3 border border-slate-100">
                   <span className="mt-0.5 flex-shrink-0">○</span>
                   <span>{task}</span>
@@ -244,7 +245,7 @@ export default function AiResultPage() {
               <p className="text-sm text-slate-500 mt-1">이런 감정이 드는 건 자연스러운 일이에요.</p>
             </div>
             <ul className="space-y-2">
-              {result.emotionOrAvoidanceSignals.map((signal, i) => (
+              {r.emotionOrAvoidanceSignals.map((signal, i) => (
                 <li key={i} className="flex items-start gap-2.5 text-sm text-slate-500 bg-white rounded-xl p-3 border border-slate-100">
                   <span className="flex-shrink-0">💭</span>
                   <span className="italic">{signal}</span>
@@ -264,7 +265,7 @@ export default function AiResultPage() {
               <p className="text-sm text-slate-500">이제 포스트잇에 직접 적어볼까요?</p>
             </div>
             <div className="postit-card rotate-1 text-left">
-              <p className="text-slate-800 text-lg font-bold leading-snug">{result.finalPostitSentence}</p>
+              <p className="text-slate-800 text-lg font-bold leading-snug">{r.finalPostitSentence}</p>
             </div>
           </div>
         )
