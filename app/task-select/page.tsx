@@ -10,10 +10,10 @@ import Card from '@/components/ui/Card'
 type EnergyLevel = 'low' | 'mid' | 'high'
 type Priority = 'red' | 'yellow' | 'green'
 
-const PRIORITY_OPTIONS: { value: Priority; label: string; dot: string; text: string }[] = [
-  { value: 'red',    label: '오늘 꼭',      dot: 'bg-red-500',    text: 'text-red-600' },
-  { value: 'yellow', label: '하면 좋음',    dot: 'bg-blue-500',   text: 'text-blue-600' },
-  { value: 'green',  label: '여유 있으면',  dot: 'bg-slate-400',  text: 'text-slate-600' },
+const PRIORITY_OPTIONS: { value: Priority; label: string; active: string }[] = [
+  { value: 'red',    label: '오늘 꼭',     active: 'bg-red-500 text-white border-red-500' },
+  { value: 'yellow', label: '하면 좋음',   active: 'bg-blue-500 text-white border-blue-500' },
+  { value: 'green',  label: '여유 있으면', active: 'bg-slate-400 text-white border-slate-400' },
 ]
 
 const PRIORITY_ORDER: Record<Priority, number> = { red: 0, yellow: 1, green: 2 }
@@ -21,7 +21,6 @@ const PRIORITY_ORDER: Record<Priority, number> = { red: 0, yellow: 1, green: 2 }
 const ENERGY_CONFIG: Record<EnergyLevel, {
   emoji: string
   label: string
-  desc: string
   maxSelect: number
   recommendedMax: number
   guideText: string
@@ -33,7 +32,6 @@ const ENERGY_CONFIG: Record<EnergyLevel, {
   low: {
     emoji: '🔴',
     label: '방전됨',
-    desc: '의욕이 거의 없고 지쳐있어요',
     maxSelect: 2,
     recommendedMax: 1,
     guideText: '오늘은 딱 1~2개만 해요. 가장 쉬운 것 하나면 충분해요.',
@@ -45,7 +43,6 @@ const ENERGY_CONFIG: Record<EnergyLevel, {
   mid: {
     emoji: '🟡',
     label: '보통이에요',
-    desc: '그럭저럭 할 수 있을 것 같아요',
     maxSelect: 3,
     recommendedMax: 2,
     guideText: '2~3개를 권장해요. 무리하지 않는 선에서 골라보세요.',
@@ -57,7 +54,6 @@ const ENERGY_CONFIG: Record<EnergyLevel, {
   high: {
     emoji: '🟢',
     label: '에너지 충분',
-    desc: '오늘은 잘 할 수 있을 것 같아요',
     maxSelect: 5,
     recommendedMax: 3,
     guideText: '최대 5개까지 선택할 수 있어요. 어려운 것도 도전해봐요.',
@@ -77,19 +73,20 @@ export default function TaskSelectPage() {
 
   useEffect(() => {
     const stored = sessionStorage.getItem('classifyResult')
+    const storedEnergy = sessionStorage.getItem('energyLevel') as EnergyLevel | null
+
     if (!stored) {
       router.replace('/brain-dump')
       return
     }
-    setClassifyResult(JSON.parse(stored) as ClassifyDumpResponse)
-  }, [])
+    if (!storedEnergy) {
+      router.replace('/energy-select')
+      return
+    }
 
-  function selectEnergy(level: EnergyLevel) {
-    setEnergyLevel(level)
-    setSelected([])
-    setPriorities({})
-    sessionStorage.setItem('energyLevel', level)
-  }
+    setClassifyResult(JSON.parse(stored) as ClassifyDumpResponse)
+    setEnergyLevel(storedEnergy)
+  }, [])
 
   const config = energyLevel ? ENERGY_CONFIG[energyLevel] : null
 
@@ -112,7 +109,6 @@ export default function TaskSelectPage() {
 
   function handleNext() {
     if (selected.length === 0) return
-    // 우선순위 순으로 정렬
     const sorted = [...selected].sort((a, b) =>
       PRIORITY_ORDER[priorities[a] ?? 'yellow'] - PRIORITY_ORDER[priorities[b] ?? 'yellow']
     )
@@ -123,7 +119,7 @@ export default function TaskSelectPage() {
     router.push('/postit-loop')
   }
 
-  if (!classifyResult) {
+  if (!classifyResult || !config) {
     return (
       <AppShell>
         <div className="flex min-h-screen justify-center items-center">
@@ -133,97 +129,8 @@ export default function TaskSelectPage() {
     )
   }
 
-  const { fixedSchedule, taskCandidates, emotionOrAvoidanceSignals, energyNotes } = classifyResult
+  const { fixedSchedule, taskCandidates } = classifyResult
 
-  // ── 스텝 1: 에너지 상태 선택 ──────────────────────────────
-  if (!energyLevel) {
-    return (
-      <AppShell>
-        <div className="flex flex-col min-h-screen py-6 animate-fade-in">
-          <div className="space-y-1 mb-8">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-2 h-2 rounded-full bg-amber-400" />
-              <div className="w-2 h-2 rounded-full bg-slate-200" />
-              <div className="w-2 h-2 rounded-full bg-slate-200" />
-              <div className="w-2 h-2 rounded-full bg-slate-200" />
-            </div>
-            <h1 className="text-2xl font-bold text-slate-800">지금 에너지가 어때요?</h1>
-            <p className="text-sm text-slate-500 leading-relaxed">
-              솔직하게 골라주세요. 선택에 따라<br />오늘 할 일 개수를 맞춰드려요.
-            </p>
-          </div>
-
-          {/* 감정/에너지 힌트 */}
-          {(emotionOrAvoidanceSignals.length > 0 || energyNotes.length > 0) && (
-            <Card variant="highlight" className="mb-6">
-              <div className="space-y-2">
-                {emotionOrAvoidanceSignals.length > 0 && (
-                  <div>
-                    <p className="text-xs font-semibold text-amber-700 mb-1">브레인덤프에서 감지된 신호</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {emotionOrAvoidanceSignals.map((sig, i) => (
-                        <span key={i} className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
-                          {sig}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {energyNotes.length > 0 && (
-                  <div>
-                    <p className="text-xs font-semibold text-slate-600 mb-1">에너지 힌트</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {energyNotes.map((note, i) => (
-                        <span key={i} className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
-                          {note}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </Card>
-          )}
-
-          {/* 에너지 선택 버튼 */}
-          <div className="flex-1 flex flex-col gap-3">
-            {(['low', 'mid', 'high'] as EnergyLevel[]).map((level) => {
-              const c = ENERGY_CONFIG[level]
-              return (
-                <button
-                  key={level}
-                  onClick={() => selectEnergy(level)}
-                  className={[
-                    'w-full text-left px-5 py-5 rounded-2xl border-2 transition-all active:scale-[0.98]',
-                    'bg-white border-slate-200 hover:border-amber-300 hover:bg-amber-50',
-                  ].join(' ')}
-                >
-                  <div className="flex items-center gap-4">
-                    <span className="text-3xl flex-shrink-0">{c.emoji}</span>
-                    <div>
-                      <p className="font-bold text-slate-800 text-base">{c.label}</p>
-                      <p className="text-sm text-slate-500 mt-0.5">{c.desc}</p>
-                    </div>
-                    <svg className="w-5 h-5 text-slate-300 ml-auto flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-
-          <div className="mt-6 safe-bottom">
-            <Button variant="secondary" onClick={() => router.push('/brain-dump')}>
-              다시 작성하기
-            </Button>
-          </div>
-        </div>
-      </AppShell>
-    )
-  }
-
-  // ── 스텝 2: 할 일 선택 ────────────────────────────────────
   return (
     <AppShell>
       <div className="flex flex-col min-h-screen py-6 animate-fade-in">
@@ -238,21 +145,20 @@ export default function TaskSelectPage() {
           </div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold text-slate-800">오늘 할 일 고르기</h1>
-            {/* 에너지 레벨 뱃지 — 탭하면 다시 선택 */}
             <button
-              onClick={() => setEnergyLevel(null)}
+              onClick={() => router.push('/energy-select')}
               className={[
                 'flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border transition-all',
-                config!.bg, config!.border, config!.color,
+                config.bg, config.border, config.color,
               ].join(' ')}
             >
-              {config!.emoji} {config!.label}
+              {config.emoji} {config.label}
               <svg className="w-3 h-3 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 11l6.536-6.536a2 2 0 112.828 2.828L11.828 13.828A2 2 0 0110 14H8v-2a2 2 0 01.586-1.414z" />
               </svg>
             </button>
           </div>
-          <p className="text-sm text-slate-500">{config!.guideText}</p>
+          <p className="text-sm text-slate-500">{config.guideText}</p>
         </div>
 
         {/* 고정 일정 */}
@@ -274,8 +180,8 @@ export default function TaskSelectPage() {
         <div className="flex-1 mb-4">
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">오늘 실행 후보</p>
-            <span className={['text-xs font-medium', config!.color].join(' ')}>
-              {selected.length}/{config!.maxSelect} 선택됨
+            <span className={['text-xs font-medium', config.color].join(' ')}>
+              {selected.length}/{config.maxSelect} 선택됨
             </span>
           </div>
 
@@ -289,24 +195,35 @@ export default function TaskSelectPage() {
             <div className="space-y-2">
               {taskCandidates.map((task, i) => {
                 const isSelected = selected.includes(task)
-                const isDisabled = !isSelected && selected.length >= config!.maxSelect
+                const isDisabled = !isSelected && selected.length >= config.maxSelect
+                const activePriority = priorities[task] ?? 'yellow'
                 return (
-                  <div key={i} className="space-y-1.5">
+                  <div
+                    key={i}
+                    className={[
+                      'rounded-2xl border-2 overflow-hidden transition-all',
+                      isSelected
+                        ? 'border-amber-400'
+                        : isDisabled
+                        ? 'border-slate-100 opacity-40'
+                        : 'border-slate-200',
+                    ].join(' ')}
+                  >
                     <button
                       onClick={() => toggle(task)}
                       disabled={isDisabled}
                       className={[
-                        'w-full text-left px-4 py-3 rounded-2xl border-2 transition-all text-sm leading-snug',
+                        'w-full text-left px-4 py-3.5 transition-all text-sm leading-snug',
                         isSelected
-                          ? 'border-amber-400 bg-amber-50 text-slate-800 font-medium'
+                          ? 'bg-amber-50 text-slate-800 font-medium'
                           : isDisabled
-                          ? 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed'
-                          : 'border-slate-200 bg-white text-slate-700 hover:border-amber-300',
+                          ? 'bg-slate-50 text-slate-300 cursor-not-allowed'
+                          : 'bg-white text-slate-700 hover:bg-amber-50',
                       ].join(' ')}
                     >
-                      <div className="flex items-start gap-3">
+                      <div className="flex items-center gap-3">
                         <div className={[
-                          'mt-0.5 w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all',
+                          'w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all',
                           isSelected ? 'border-amber-400 bg-amber-400' : 'border-slate-300',
                         ].join(' ')}>
                           {isSelected && (
@@ -319,27 +236,28 @@ export default function TaskSelectPage() {
                       </div>
                     </button>
 
-                    {/* 우선순위 선택 (선택된 항목에만 표시) */}
                     {isSelected && (
-                      <div className="flex gap-1.5 pl-1 animate-fade-in">
-                        {PRIORITY_OPTIONS.map((opt) => {
-                          const isActive = (priorities[task] ?? 'yellow') === opt.value
-                          return (
-                            <button
-                              key={opt.value}
-                              onClick={() => setPriority(task, opt.value)}
-                              className={[
-                                'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
-                                isActive
-                                  ? `${opt.text} border-current bg-white shadow-sm`
-                                  : 'text-slate-400 border-slate-200 bg-white hover:border-slate-300',
-                              ].join(' ')}
-                            >
-                              <span className={['w-2 h-2 rounded-full flex-shrink-0', opt.dot].join(' ')} />
-                              {opt.label}
-                            </button>
-                          )
-                        })}
+                      <div className="border-t border-amber-200 bg-white px-3 py-3 animate-fade-in">
+                        <p className="text-xs font-semibold text-slate-500 mb-2">언제 할 건가요?</p>
+                        <div className="flex gap-2">
+                          {PRIORITY_OPTIONS.map((opt) => {
+                            const isActive = activePriority === opt.value
+                            return (
+                              <button
+                                key={opt.value}
+                                onClick={() => setPriority(task, opt.value)}
+                                className={[
+                                  'flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 transition-all',
+                                  isActive
+                                    ? opt.active
+                                    : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300',
+                                ].join(' ')}
+                              >
+                                {opt.label}
+                              </button>
+                            )
+                          })}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -350,10 +268,10 @@ export default function TaskSelectPage() {
         </div>
 
         {/* 초과 경고 */}
-        {selected.length > config!.recommendedMax && (
+        {selected.length > config.recommendedMax && (
           <Card variant="highlight" className="mb-4">
             <p className="text-xs text-amber-700 leading-relaxed">
-              {config!.warningText}
+              {config.warningText}
             </p>
           </Card>
         )}

@@ -19,7 +19,6 @@ function formatTime(hhmm: string) {
   return `${period} ${hour}:${String(m).padStart(2, '0')}`
 }
 
-// 한 장의 포스트잇 — 여러 항목을 그리드로 표시
 function PostitSheet({
   items,
   pageNum,
@@ -35,9 +34,8 @@ function PostitSheet({
     weekday: 'short',
   })
 
-  // 아이템 영역 높이 비율 (strip 11% + header 11% = 22%, 남은 78%)
   const ITEM_AREA_PCT = 78
-  const rowPct = ITEM_AREA_PCT / ITEMS_PER_PAGE // 7.8% per row
+  const rowPct = ITEM_AREA_PCT / ITEMS_PER_PAGE
 
   return (
     <div
@@ -58,7 +56,7 @@ function PostitSheet({
         }}
       />
 
-      {/* 헤더 (날짜 + 페이지) */}
+      {/* 헤더 */}
       <div
         className="absolute left-0 right-0 z-10 flex items-center justify-between"
         style={{
@@ -91,7 +89,7 @@ function PostitSheet({
         </span>
       </div>
 
-      {/* 세로 구분선 (시간 | 할일) */}
+      {/* 세로 구분선 */}
       <div
         className="absolute z-10"
         style={{
@@ -103,14 +101,12 @@ function PostitSheet({
         }}
       />
 
-      {/* 행 배경 라인 + 항목 */}
       {Array.from({ length: ITEMS_PER_PAGE }).map((_, i) => {
         const item = items[i]
         const topPct = 22 + i * rowPct
 
         return (
           <div key={i}>
-            {/* 행 구분선 */}
             <div
               className="absolute left-0 right-0"
               style={{
@@ -122,7 +118,6 @@ function PostitSheet({
 
             {item ? (
               <>
-                {/* 시간 */}
                 <div
                   className="absolute flex items-center"
                   style={{
@@ -145,7 +140,6 @@ function PostitSheet({
                   </span>
                 </div>
 
-                {/* 할 일 */}
                 <div
                   className="absolute flex items-center"
                   style={{
@@ -172,7 +166,6 @@ function PostitSheet({
                 </div>
               </>
             ) : (
-              /* 빈 행 */
               <div
                 className="absolute"
                 style={{
@@ -207,7 +200,6 @@ export default function DailyPlanPage() {
   const [items, setItems] = useState<DailyPostitItem[]>([])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [xpEarned, setXpEarned] = useState(0)
 
   useEffect(() => {
     const stored = sessionStorage.getItem('postitItems')
@@ -227,14 +219,12 @@ export default function DailyPlanPage() {
     })
     setItems(sorted)
 
-    // 1차: sessionStorage로 즉시(동기) 복원 — 새로고침해도 버튼 즉시 비활성
     const today = new Date().toISOString().slice(0, 10)
     if (sessionStorage.getItem(`planSaved_${today}`) === 'true') {
       setSaved(true)
       return
     }
 
-    // 2차: DB 확인 (다른 기기/탭에서 저장한 경우 대비)
     async function checkAlreadySaved() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
@@ -287,17 +277,15 @@ export default function DailyPlanPage() {
           await supabase.from('plan_sentences').insert(rows)
         }
 
-        let totalXp = 0
         for (let i = 0; i < items.length; i++) {
-          const result = await grantXP(supabase, user.id, 'plan_sentence')
-          if (result.granted) totalXp += result.xp
+          await grantXP(supabase, user.id, 'plan_sentence')
         }
-        setXpEarned(totalXp)
       }
 
       const todayKey = new Date().toISOString().slice(0, 10)
       sessionStorage.setItem(`planSaved_${todayKey}`, 'true')
       setSaved(true)
+      router.push('/postit-location')
     } finally {
       setSaving(false)
     }
@@ -313,7 +301,6 @@ export default function DailyPlanPage() {
     )
   }
 
-  // 10개씩 페이지 분할
   const pages: DailyPostitItem[][] = []
   for (let i = 0; i < items.length; i += ITEMS_PER_PAGE) {
     pages.push(items.slice(i, i + ITEMS_PER_PAGE))
@@ -332,7 +319,6 @@ export default function DailyPlanPage() {
             <div className="w-2 h-2 rounded-full bg-amber-400" />
           </div>
 
-          {/* 핵심 CTA */}
           <div className="bg-amber-400 rounded-2xl px-5 py-4">
             <div className="flex items-center gap-4">
               <HandwriteAnim />
@@ -361,31 +347,24 @@ export default function DailyPlanPage() {
           ))}
         </div>
 
-        {/* 보조 안내 */}
         <p className="text-xs text-slate-400 text-center mb-5 leading-relaxed">
           손으로 쓰는 순간 뇌가 &apos;오늘 해야 할 일&apos;로 인식해요.<br />
           쓰고 나서 눈에 잘 띄는 곳에 붙여두세요.
         </p>
 
-        {/* XP */}
-        {saved && xpEarned > 0 && (
-          <div className="text-center py-2 mb-3">
-            <p className="font-bold text-amber-600">+{xpEarned} XP 획득!</p>
-          </div>
-        )}
-
-        {/* 버튼 */}
         <div className="space-y-3 safe-bottom">
-          <Button onClick={handleSave} loading={saving} disabled={saved}>
-            {saved ? '작성 완료 ✓' : '계획 작성하고 XP 받기'}
+          <Button onClick={saved ? () => router.push('/postit-location') : handleSave} loading={saving}>
+            {saved ? '어디에 붙일까요? →' : '계획 작성하고 XP 받기'}
           </Button>
-          <Button
-            variant="secondary"
-            onClick={() => router.push('/task-select')}
-            disabled={saving}
-          >
-            포스트잇 항목 수정하기
-          </Button>
+          {!saved && (
+            <Button
+              variant="secondary"
+              onClick={() => router.push('/task-select')}
+              disabled={saving}
+            >
+              포스트잇 항목 수정하기
+            </Button>
+          )}
         </div>
       </div>
     </AppShell>

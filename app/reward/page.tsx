@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { REWARD_XP, RewardType } from '@/types'
@@ -16,17 +16,11 @@ interface XPBadge {
   earned: boolean
 }
 
-const TOTAL_TIMER_SECONDS = 10 * 60 // 10 minutes
-
 export default function RewardPage() {
   const router = useRouter()
   const [badges, setBadges] = useState<XPBadge[]>([])
   const [todayXp, setTodayXp] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [showTimer, setShowTimer] = useState(false)
-  const [timerSeconds, setTimerSeconds] = useState(TOTAL_TIMER_SECONDS)
-  const [timerRunning, setTimerRunning] = useState(false)
-  const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     async function loadData() {
@@ -57,7 +51,6 @@ export default function RewardPage() {
           setBadges(allBadges)
         }
       } else {
-        // Guest: assume brain_dump and plan_sentence earned
         const guestEarned = new Set(['brain_dump', 'plan_sentence'])
         const guestXp = REWARD_XP.brain_dump + REWARD_XP.plan_sentence
         setTodayXp(guestXp)
@@ -69,44 +62,6 @@ export default function RewardPage() {
 
     loadData()
   }, [])
-
-  // Timer logic
-  useEffect(() => {
-    if (timerRunning && timerSeconds > 0) {
-      intervalRef.current = setInterval(() => {
-        setTimerSeconds((s) => {
-          if (s <= 1) {
-            setTimerRunning(false)
-            clearInterval(intervalRef.current!)
-            return 0
-          }
-          return s - 1
-        })
-      }, 1000)
-    }
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current)
-    }
-  }, [timerRunning])
-
-  function startTimer() {
-    setShowTimer(true)
-    setTimerSeconds(TOTAL_TIMER_SECONDS)
-    setTimerRunning(true)
-  }
-
-  function toggleTimer() {
-    setTimerRunning((r) => !r)
-  }
-
-  function resetTimer() {
-    setTimerRunning(false)
-    setTimerSeconds(TOTAL_TIMER_SECONDS)
-  }
-
-  const minutes = Math.floor(timerSeconds / 60)
-  const seconds = timerSeconds % 60
-  const timerProgress = ((TOTAL_TIMER_SECONDS - timerSeconds) / TOTAL_TIMER_SECONDS) * 100
 
   if (loading) {
     return (
@@ -187,84 +142,13 @@ export default function RewardPage() {
           </div>
         </Card>
 
-        {/* Timer Section */}
-        {showTimer ? (
-          <Card>
-            <div className="space-y-4">
-              <p className="section-title text-center">10분 타이머</p>
-
-              {/* Circular timer */}
-              <div className="flex justify-center">
-                <div className="relative w-36 h-36">
-                  <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-                    <circle
-                      cx="50" cy="50" r="44"
-                      fill="none"
-                      stroke="#fef3c7"
-                      strokeWidth="8"
-                    />
-                    <circle
-                      cx="50" cy="50" r="44"
-                      fill="none"
-                      stroke="#fbbf24"
-                      strokeWidth="8"
-                      strokeLinecap="round"
-                      strokeDasharray={`${2 * Math.PI * 44}`}
-                      strokeDashoffset={`${2 * Math.PI * 44 * (1 - timerProgress / 100)}`}
-                      className="transition-all duration-1000"
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-3xl font-bold text-slate-800 tabular-nums">
-                      {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
-                    </span>
-                    <span className="text-xs text-slate-400">
-                      {timerSeconds === 0 ? '완료!' : timerRunning ? '집중 중' : '일시정지'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {timerSeconds === 0 ? (
-                <div className="text-center space-y-2">
-                  <p className="text-2xl">🎉</p>
-                  <p className="font-bold text-slate-700">10분 완료! 대단해요!</p>
-                  <Button onClick={resetTimer} variant="secondary" size="md">
-                    다시 하기
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex gap-2">
-                  <button
-                    onClick={toggleTimer}
-                    className="flex-1 py-3 bg-amber-400 text-slate-800 rounded-full font-semibold hover:bg-amber-500 transition-all"
-                  >
-                    {timerRunning ? '⏸ 일시정지' : '▶ 재시작'}
-                  </button>
-                  <button
-                    onClick={resetTimer}
-                    className="px-4 py-3 bg-slate-100 text-slate-500 rounded-full hover:bg-slate-200 transition-all"
-                  >
-                    ↺
-                  </button>
-                </div>
-              )}
-            </div>
-          </Card>
-        ) : null}
-
-        {/* CTA Buttons */}
+        {/* CTA */}
         <div className="pt-2 pb-6 space-y-3 safe-bottom">
-          {!showTimer && (
-            <Button onClick={startTimer}>
-              10분 타이머 시작 ⏱️
-            </Button>
-          )}
-          <Button
-            variant={showTimer ? 'primary' : 'secondary'}
-            onClick={() => router.push('/profile')}
-          >
-            {showTimer ? '내 성장 기록 보기' : '오늘은 여기까지'}
+          <Button onClick={() => router.push('/timer')}>
+            이제 시작해볼까요? →
+          </Button>
+          <Button variant="secondary" onClick={() => router.push('/profile')}>
+            오늘은 여기까지
           </Button>
         </div>
       </div>

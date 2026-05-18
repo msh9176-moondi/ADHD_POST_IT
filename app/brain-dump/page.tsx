@@ -97,7 +97,7 @@ export default function BrainDumpPage() {
       sessionStorage.setItem('brainDumpId', brainDumpId ?? '')
       sessionStorage.setItem('brainDumpContent', content.trim())
 
-      router.push('/task-select')
+      router.push('/energy-select')
     } catch (err) {
       console.error(err)
       setLoading(false)
@@ -131,7 +131,8 @@ export default function BrainDumpPage() {
             정리하려고 하지 않아도 됩니다.
           </p>
           <p className="text-slate-600 text-base font-medium leading-relaxed">
-            해야 할 일, 걱정, 미룬 것,<br />떠오르는 것을 전부 적어보세요.
+            머릿속에 떠오르는 것을 꺼내보세요.<br />
+            <span className="text-amber-600">3개만 적어도 충분해요.</span>
           </p>
         </div>
 

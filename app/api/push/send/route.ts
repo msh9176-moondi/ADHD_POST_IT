@@ -24,10 +24,20 @@ function getMessage(daysSince: number): { title: string; body: string } | null {
   return null
 }
 
+function isAuthorized(req: NextRequest): boolean {
+  // Vercel cron: Authorization: Bearer <CRON_SECRET>
+  const auth = req.headers.get('authorization')
+  if (auth === `Bearer ${process.env.CRON_SECRET}`) return true
+  // 수동 호출: x-cron-secret 헤더
+  return req.headers.get('x-cron-secret') === process.env.CRON_SECRET
+}
+
+export async function GET(req: NextRequest) {
+  return POST(req)
+}
+
 export async function POST(req: NextRequest) {
-  // 크론 서비스에서 호출할 때 secret으로 인증
-  const secret = req.headers.get('x-cron-secret')
-  if (secret !== process.env.CRON_SECRET) {
+  if (!isAuthorized(req)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 

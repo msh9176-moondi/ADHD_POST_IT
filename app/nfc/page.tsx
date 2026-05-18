@@ -91,7 +91,7 @@ function NfcTagHandler() {
           <Link href="/auth/login" className="block w-full py-4 px-6 text-lg font-semibold text-center text-slate-800 bg-amber-400 rounded-full shadow-md hover:bg-amber-500 transition-all">
             로그인하러 가기
           </Link>
-          <Link href="/brain-dump" className="block w-full py-4 px-6 text-lg font-semibold text-center text-slate-600 bg-white rounded-full border-2 border-slate-200 hover:border-amber-300 transition-all">
+          <Link href="/grounding" className="block w-full py-4 px-6 text-lg font-semibold text-center text-slate-600 bg-white rounded-full border-2 border-slate-200 hover:border-amber-300 transition-all">
             로그인 없이 계속하기
           </Link>
         </div>
@@ -193,7 +193,7 @@ function NfcTagHandler() {
       </div>
 
       <div className="mt-auto space-y-3 safe-bottom">
-        <Button onClick={() => router.push('/brain-dump')}>
+        <Button onClick={() => router.push('/grounding')}>
           오늘 계획 만들기
         </Button>
         <Button variant="secondary" onClick={() => router.push('/profile')}>
@@ -260,7 +260,7 @@ function NfcInfoView() {
       </div>
 
       <div className="mt-8 safe-bottom">
-        <Button onClick={() => router.push('/brain-dump')}>
+        <Button onClick={() => router.push('/grounding')}>
           오늘 계획 만들기
         </Button>
       </div>

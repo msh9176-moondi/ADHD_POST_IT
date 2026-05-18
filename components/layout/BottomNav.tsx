@@ -43,7 +43,7 @@ const NAV_ITEMS = [
 ]
 
 // 위자드 플로우 중간 페이지는 네비게이션 숨김
-const HIDDEN_PATHS = ['/task-select', '/postit-loop', '/time-arrange', '/auth', '/setup', '/guide']
+const HIDDEN_PATHS = ['/energy-select', '/task-select', '/postit-loop', '/time-arrange', '/auth', '/setup', '/guide', '/grounding', '/scan', '/timer', '/postit-location']
 
 export default function BottomNav() {
   const pathname = usePathname()
