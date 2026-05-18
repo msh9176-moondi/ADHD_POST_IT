@@ -28,13 +28,18 @@ export default function PostitLocationPage() {
       const storedAi = sessionStorage.getItem('aiResult')
       if (storedAi) setSentence(JSON.parse(storedAi).finalPostitSentence ?? '')
     }
+
+    // 이 페이지에 도달했다는 것 = 포스트잇을 작성한 것으로 간주, XP 즉시 지급
+    async function grantWrittenXP() {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) await grantXP(supabase, user.id, 'postit_written')
+    }
+    grantWrittenXP()
   }, [])
 
-  async function handleLocation(loc: string) {
+  function handleLocation(loc: string) {
     sessionStorage.setItem('postitLocation', loc)
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) await grantXP(supabase, user.id, 'postit_written')
     router.push('/reward')
   }
 
