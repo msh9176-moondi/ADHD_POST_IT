@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, FormEvent } from 'react'
+import { useState, useEffect, useRef, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import AppShell from '@/components/layout/AppShell'
@@ -14,6 +14,11 @@ export default function SetupPage() {
   const [loading, setLoading] = useState(false)
   const [checking, setChecking] = useState(true)
   const supabase = createClient()
+  const timeInputRef = useRef<HTMLInputElement>(null)
+
+  function showPicker() {
+    try { timeInputRef.current?.showPicker() } catch { timeInputRef.current?.focus() }
+  }
 
   useEffect(() => {
     async function checkAuth() {
@@ -125,12 +130,13 @@ export default function SetupPage() {
                   </span>
                 </div>
 
-                <div className="relative">
+                <div className="relative cursor-pointer" onClick={showPicker}>
                   <input
+                    ref={timeInputRef}
                     type="time"
                     value={planTime}
                     onChange={(e) => setPlanTime(e.target.value)}
-                    className="w-full text-3xl font-bold text-center text-slate-800 bg-amber-50 border-2 border-amber-200 rounded-2xl py-6 focus:border-amber-400 focus:ring-2 focus:ring-amber-200 transition-all cursor-pointer"
+                    className="w-full text-3xl font-bold text-center text-slate-800 bg-amber-50 border-2 border-amber-200 rounded-2xl py-6 focus:border-amber-400 focus:ring-2 focus:ring-amber-200 transition-all cursor-pointer pointer-events-none"
                   />
                 </div>
 
