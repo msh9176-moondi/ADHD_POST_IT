@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { DailyPostitItem } from '@/types'
 import AppShell from '@/components/layout/AppShell'
 import Button from '@/components/ui/Button'
 
@@ -13,7 +14,8 @@ const TIMER_OPTIONS = [
 
 export default function TimerPage() {
   const router = useRouter()
-  const [postitSentence, setPostitSentence] = useState('')
+  const [items, setItems] = useState<DailyPostitItem[]>([])
+  const [currentIndex, setCurrentIndex] = useState(0)
   const [timerSeconds, setTimerSeconds] = useState(600)
   const [timerTotal, setTimerTotal] = useState(600)
   const [timerRunning, setTimerRunning] = useState(false)
@@ -23,12 +25,11 @@ export default function TimerPage() {
   useEffect(() => {
     const storedItems = sessionStorage.getItem('postitItems')
     if (storedItems) {
-      const parsed = JSON.parse(storedItems)
-      if (parsed.length > 0) setPostitSentence(parsed[0].finalPostitSentence)
-    } else {
-      const storedAi = sessionStorage.getItem('aiResult')
-      if (storedAi) setPostitSentence(JSON.parse(storedAi).finalPostitSentence ?? '')
+      const parsed: DailyPostitItem[] = JSON.parse(storedItems)
+      setItems(parsed)
     }
+    const storedIndex = sessionStorage.getItem('timerItemIndex')
+    if (storedIndex) setCurrentIndex(parseInt(storedIndex, 10))
   }, [])
 
   useEffect(() => {
@@ -63,8 +64,21 @@ export default function TimerPage() {
   function resetTimer() {
     setTimerRunning(false)
     setTimerSeconds(timerTotal)
+    setStarted(false)
   }
 
+  function goNextItem() {
+    const nextIndex = currentIndex + 1
+    sessionStorage.setItem('timerItemIndex', String(nextIndex))
+    setCurrentIndex(nextIndex)
+    setTimerRunning(false)
+    setTimerSeconds(600)
+    setTimerTotal(600)
+    setStarted(false)
+  }
+
+  const currentItem = items[currentIndex]
+  const hasNext = currentIndex + 1 < items.length
   const minutes = Math.floor(timerSeconds / 60)
   const seconds = timerSeconds % 60
   const timerProgress = timerTotal > 0 ? ((timerTotal - timerSeconds) / timerTotal) * 100 : 0
@@ -73,15 +87,37 @@ export default function TimerPage() {
     <AppShell>
       <div className="flex flex-col min-h-screen py-6 space-y-5 animate-fade-in">
 
-        {/* Post-it sentence */}
-        {postitSentence && (
+        {/* 진행 상황 */}
+        {items.length > 1 && (
+          <div className="flex items-center gap-1.5">
+            {items.map((_, i) => (
+              <div
+                key={i}
+                className={[
+                  'h-1.5 flex-1 rounded-full transition-all',
+                  i < currentIndex ? 'bg-amber-400' : i === currentIndex ? 'bg-amber-300' : 'bg-slate-200',
+                ].join(' ')}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* 현재 포스트잇 문장 */}
+        {currentItem && (
           <div className="bg-amber-300 rounded-2xl px-4 py-4 text-center shadow-sm">
-            <p className="text-slate-800 text-base font-bold leading-snug">{postitSentence}</p>
+            {items.length > 1 && (
+              <p className="text-xs text-amber-700 font-medium mb-1">
+                {currentIndex + 1} / {items.length}번째 포스트잇
+              </p>
+            )}
+            <p className="text-slate-800 text-base font-bold leading-snug">
+              {currentItem.finalPostitSentence}
+            </p>
           </div>
         )}
 
         {!started ? (
-          /* Duration selection */
+          /* 시간 선택 */
           <div className="space-y-4">
             <div className="space-y-1">
               <p className="text-center text-xl font-bold text-slate-800">
@@ -104,18 +140,12 @@ export default function TimerPage() {
             </div>
           </div>
         ) : (
-          /* Timer running */
+          /* 타이머 실행 중 */
           <div className="space-y-4">
-            {/* Circular timer */}
             <div className="flex justify-center">
               <div className="relative w-44 h-44">
                 <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-                  <circle
-                    cx="50" cy="50" r="44"
-                    fill="none"
-                    stroke="#fef3c7"
-                    strokeWidth="8"
-                  />
+                  <circle cx="50" cy="50" r="44" fill="none" stroke="#fef3c7" strokeWidth="8" />
                   <circle
                     cx="50" cy="50" r="44"
                     fill="none"
@@ -139,12 +169,15 @@ export default function TimerPage() {
             </div>
 
             {timerSeconds === 0 ? (
-              <div className="text-center space-y-3">
-                <p className="text-3xl">🎉</p>
+              /* 완료 상태 */
+              <div className="text-center space-y-2">
+                <p className="text-4xl">🎉</p>
                 <p className="text-lg font-bold text-slate-700">완료! 정말 잘했어요!</p>
-                <Button variant="secondary" onClick={resetTimer}>
-                  다시 하기
-                </Button>
+                {hasNext && (
+                  <p className="text-sm text-slate-400">
+                    다음 포스트잇도 해볼까요?
+                  </p>
+                )}
               </div>
             ) : (
               <div className="flex gap-2">
@@ -165,14 +198,29 @@ export default function TimerPage() {
           </div>
         )}
 
-        {/* Bottom CTA */}
-        <div className="pt-4 pb-6 safe-bottom">
-          <Button
-            variant={timerSeconds === 0 ? 'primary' : 'secondary'}
-            onClick={() => router.push('/profile')}
-          >
-            내 성장 기록 보기
-          </Button>
+        {/* 하단 버튼 */}
+        <div className="pt-4 pb-6 space-y-3 safe-bottom">
+          {timerSeconds === 0 && hasNext ? (
+            <>
+              <Button onClick={goNextItem}>
+                다음 포스트잇 시작하기 →
+              </Button>
+              <Button variant="secondary" onClick={() => router.push('/profile')}>
+                오늘은 여기까지
+              </Button>
+            </>
+          ) : timerSeconds === 0 ? (
+            <Button onClick={() => router.push('/profile')}>
+              오늘 완료 🎉 성장 기록 보기
+            </Button>
+          ) : (
+            <Button
+              variant="secondary"
+              onClick={() => router.push('/profile')}
+            >
+              오늘은 여기까지
+            </Button>
+          )}
         </div>
       </div>
     </AppShell>

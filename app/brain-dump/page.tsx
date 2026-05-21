@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, FormEvent } from 'react'
+import { useState, useEffect, useRef, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { grantXP } from '@/lib/xp/reward'
@@ -15,13 +15,34 @@ const LOADING_MESSAGES = [
   '감정 신호도 함께 살펴보고 있어요...',
 ]
 
+// 칩 클릭 시 삽입되는 빈칸 템플릿 — 사용자가 콜론 뒤를 직접 채워야 함
+const HINT_TEMPLATES = [
+  { label: '미루는 것', template: '미루는 것: ' },
+  { label: '걱정되는 것', template: '걱정되는 것: ' },
+  { label: '오늘 할 것', template: '오늘 할 것: ' },
+  { label: '떠오른 것', template: '떠오른 것: ' },
+  { label: '막막한 것', template: '막막한 것: ' },
+]
+
+// 템플릿만 있고 실제 내용이 없으면 false
+function hasRealContent(text: string): boolean {
+  const lines = text.trim().split('\n').filter((l) => l.trim())
+  return lines.some((line) => {
+    const t = line.trim()
+    if (t.endsWith(':') || t.endsWith(': ')) return false
+    const colonIdx = t.indexOf(': ')
+    if (colonIdx >= 0) return t.slice(colonIdx + 2).trim().length > 0
+    return t.length > 0
+  })
+}
+
 export default function BrainDumpPage() {
   const router = useRouter()
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(false)
   const [loadingMsg, setLoadingMsg] = useState(LOADING_MESSAGES[0])
   const [userId, setUserId] = useState<string | null>(null)
-  const [charCount, setCharCount] = useState(0)
 
   useEffect(() => {
     async function getUser() {
@@ -33,10 +54,6 @@ export default function BrainDumpPage() {
   }, [])
 
   useEffect(() => {
-    setCharCount(content.length)
-  }, [content])
-
-  useEffect(() => {
     if (!loading) return
     let i = 0
     const interval = setInterval(() => {
@@ -46,9 +63,22 @@ export default function BrainDumpPage() {
     return () => clearInterval(interval)
   }, [loading])
 
+  function addTemplate(template: string) {
+    setContent((prev) => {
+      const newContent = prev ? `${prev}\n${template}` : template
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus()
+          textareaRef.current.setSelectionRange(newContent.length, newContent.length)
+        }
+      }, 0)
+      return newContent
+    })
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    if (!content.trim() || loading) return
+    if (!hasRealContent(content) || loading) return
 
     setLoading(true)
 
@@ -56,7 +86,6 @@ export default function BrainDumpPage() {
       const supabase = createClient()
       let brainDumpId: string | null = null
 
-      // Save brain dump if logged in
       if (userId) {
         const { data } = await supabase
           .from('brain_dumps')
@@ -66,33 +95,28 @@ export default function BrainDumpPage() {
         brainDumpId = data?.id ?? null
       }
 
-      // Call classify AI API
       const response = await fetch('/api/classify-dump', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ brainDump: content.trim() }),
       })
 
-      if (!response.ok) {
-        throw new Error('AI 분류 중 문제가 발생했어요')
-      }
+      if (!response.ok) throw new Error('AI 분류 중 문제가 발생했어요')
 
       const classifyResult = await response.json()
 
-      // Grant XP if logged in
       if (userId) {
         await grantXP(supabase, userId, 'brain_dump')
       }
 
-      // 새 세션 시작 — 이전 계획 데이터와 저장 상태 초기화
       const today = new Date().toISOString().slice(0, 10)
       sessionStorage.removeItem(`planSaved_${today}`)
       sessionStorage.removeItem('postitItems')
       sessionStorage.removeItem('selectedTasks')
       sessionStorage.removeItem('taskPriorities')
       sessionStorage.removeItem('currentTaskIndex')
+      sessionStorage.removeItem('energyLevel')
 
-      // Store in sessionStorage
       sessionStorage.setItem('classifyResult', JSON.stringify(classifyResult))
       sessionStorage.setItem('brainDumpId', brainDumpId ?? '')
       sessionStorage.setItem('brainDumpContent', content.trim())
@@ -104,13 +128,7 @@ export default function BrainDumpPage() {
     }
   }
 
-  const hints = [
-    '해야 하는데 계속 미루는 것',
-    '걱정되거나 막막한 것',
-    '갑자기 생각난 아이디어',
-    '오늘 꼭 처리해야 할 것',
-    '그냥 머릿속에 맴도는 것',
-  ]
+  const canSubmit = hasRealContent(content)
 
   return (
     <AppShell>
@@ -118,66 +136,69 @@ export default function BrainDumpPage() {
         {/* Header */}
         <div className="space-y-2 mb-6 animate-fade-in">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-slate-800">
-              브레인 덤프
-            </h1>
+            <h1 className="text-2xl font-bold text-slate-800">브레인 덤프</h1>
             {!userId && (
               <span className="text-xs bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full">
                 게스트 모드
               </span>
             )}
           </div>
-          <p className="text-slate-500 text-sm leading-relaxed">
-            정리하려고 하지 않아도 됩니다.
-          </p>
           <p className="text-slate-600 text-base font-medium leading-relaxed">
-            머릿속에 떠오르는 것을 꺼내보세요.<br />
-            <span className="text-amber-600">3개만 적어도 충분해요.</span>
+            지금 머릿속에 있는 것을 꺼내보세요.<br />
+            <span className="text-amber-600">정리 안 해도 됩니다. 그냥 쏟아내세요.</span>
           </p>
-        </div>
-
-        {/* Hint chips */}
-        <div className="flex flex-wrap gap-1.5 mb-4">
-          {hints.map((hint) => (
-            <button
-              key={hint}
-              type="button"
-              onClick={() => setContent((prev) => prev ? `${prev}\n${hint}` : hint)}
-              className="text-xs bg-white text-slate-500 border border-slate-200 rounded-full px-3 py-1.5 hover:border-amber-300 hover:text-amber-700 transition-all"
-            >
-              + {hint}
-            </button>
-          ))}
         </div>
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col space-y-4">
           <div className="flex-1 relative">
             <textarea
+              ref={textareaRef}
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="예: 포트폴리오 해야 함, 사업계획서도 써야 함, 방 정리도 해야 함, 근데 너무 막막함…"
+              placeholder={
+                '예시:\n미루는 것: 포트폴리오 3주째 손도 못 댔음\n걱정되는 것: 취업 어디서 시작해야 할지 모르겠음\n오늘 할 것: 친구한테 연락 답장해야 함'
+              }
               className="w-full h-full min-h-[240px] px-4 py-4 rounded-2xl border-2 border-slate-200 text-slate-800 placeholder-slate-300 text-base leading-relaxed bg-white focus:border-amber-400 focus:ring-2 focus:ring-amber-200 transition-all resize-none"
               disabled={loading}
             />
             <div className="absolute bottom-3 right-3 text-xs text-slate-300">
-              {charCount}자
+              {content.length}자
             </div>
           </div>
 
-          {/* Loading state */}
+          {/* 주제 힌트 칩 */}
+          {!loading && (
+            <div className="space-y-2">
+              <p className="text-xs text-slate-400 font-medium">
+                뭘 써야 할지 모르겠다면, 아래 주제 중 하나를 탭하세요
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {HINT_TEMPLATES.map(({ label, template }) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => addTemplate(template)}
+                    className="text-xs bg-white text-slate-500 border border-slate-200 rounded-full px-3 py-1.5 hover:border-amber-400 hover:text-amber-700 hover:bg-amber-50 transition-all"
+                  >
+                    {label} →
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 로딩 상태 */}
           {loading && (
             <Card variant="highlight">
               <div className="flex items-center gap-3">
                 <div className="w-5 h-5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
-                <p className="text-sm text-amber-700 font-medium transition-all">
-                  {loadingMsg}
-                </p>
+                <p className="text-sm text-amber-700 font-medium">{loadingMsg}</p>
               </div>
             </Card>
           )}
 
-          {/* Tips */}
+          {/* 안내 */}
           {!loading && (
             <Card>
               <div className="flex items-start gap-2.5">
@@ -193,15 +214,20 @@ export default function BrainDumpPage() {
             </Card>
           )}
 
-          {/* Submit */}
+          {/* 제출 */}
           <div className="pt-2 safe-bottom">
             <Button
               type="submit"
               loading={loading}
-              disabled={!content.trim()}
+              disabled={!canSubmit}
             >
               {loading ? loadingMsg : 'AI가 할 일 분류하기 ✨'}
             </Button>
+            {!canSubmit && content.trim().length > 0 && (
+              <p className="text-center text-xs text-slate-400 mt-2">
+                주제 옆에 내용을 조금만 더 적어보세요
+              </p>
+            )}
           </div>
         </form>
       </div>

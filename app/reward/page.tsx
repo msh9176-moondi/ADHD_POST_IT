@@ -28,7 +28,7 @@ export default function RewardPage() {
       const { data: { user } } = await supabase.auth.getUser()
 
       const allBadges: XPBadge[] = [
-        { type: 'nfc_tag', label: 'NFC 태깅', icon: '🏷️', xp: REWARD_XP.nfc_tag, earned: false },
+        { type: 'nfc_tag', label: '로그인', icon: '🔑', xp: REWARD_XP.nfc_tag, earned: false },
         { type: 'brain_dump', label: '브레인 덤프', icon: '🧠', xp: REWARD_XP.brain_dump, earned: false },
         { type: 'plan_sentence', label: '계획 문장', icon: '✨', xp: REWARD_XP.plan_sentence, earned: false },
         { type: 'postit_written', label: '포스트잇 작성', icon: '📝', xp: REWARD_XP.postit_written, earned: false },

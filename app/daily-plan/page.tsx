@@ -277,15 +277,12 @@ export default function DailyPlanPage() {
           await supabase.from('plan_sentences').insert(rows)
         }
 
-        for (let i = 0; i < items.length; i++) {
-          await grantXP(supabase, user.id, 'plan_sentence')
-        }
+        await grantXP(supabase, user.id, 'plan_sentence')
       }
 
       const todayKey = new Date().toISOString().slice(0, 10)
       sessionStorage.setItem(`planSaved_${todayKey}`, 'true')
-      setSaved(true)
-      router.push('/postit-location')
+      router.push('/write-postit')
     } finally {
       setSaving(false)
     }
@@ -352,11 +349,11 @@ export default function DailyPlanPage() {
           쓰고 나서 눈에 잘 띄는 곳에 붙여두세요.
         </p>
 
-        <div className="space-y-3 safe-bottom">
-          <Button onClick={saved ? () => router.push('/postit-location') : handleSave} loading={saving}>
-            {saved ? '어디에 붙일까요? →' : '계획 작성하고 XP 받기'}
-          </Button>
-          {!saved && (
+        {!saved ? (
+          <div className="space-y-3 safe-bottom">
+            <Button onClick={handleSave} loading={saving}>
+              계획 작성하고 XP 받기
+            </Button>
             <Button
               variant="secondary"
               onClick={() => router.push('/task-select')}
@@ -364,8 +361,17 @@ export default function DailyPlanPage() {
             >
               포스트잇 항목 수정하기
             </Button>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="space-y-3 safe-bottom animate-fade-in">
+            <Button onClick={() => router.push('/write-postit')}>
+              포스트잇 쓰기 →
+            </Button>
+            <Button variant="secondary" onClick={() => router.push('/brain-dump')}>
+              오늘은 여기까지
+            </Button>
+          </div>
+        )}
       </div>
     </AppShell>
   )

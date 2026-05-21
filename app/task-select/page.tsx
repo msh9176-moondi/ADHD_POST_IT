@@ -3,11 +3,11 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ClassifyDumpResponse } from '@/types'
+import { EnergyLevel, ENERGY_CONFIG } from '@/lib/config/energyLevels'
 import AppShell from '@/components/layout/AppShell'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
 
-type EnergyLevel = 'low' | 'mid' | 'high'
 type Priority = 'red' | 'yellow' | 'green'
 
 const PRIORITY_OPTIONS: { value: Priority; label: string; active: string }[] = [
@@ -18,74 +18,28 @@ const PRIORITY_OPTIONS: { value: Priority; label: string; active: string }[] = [
 
 const PRIORITY_ORDER: Record<Priority, number> = { red: 0, yellow: 1, green: 2 }
 
-const ENERGY_CONFIG: Record<EnergyLevel, {
-  emoji: string
-  label: string
-  maxSelect: number
-  recommendedMax: number
-  guideText: string
-  warningText: string
-  color: string
-  bg: string
-  border: string
-}> = {
-  low: {
-    emoji: '🔴',
-    label: '방전됨',
-    maxSelect: 2,
-    recommendedMax: 1,
-    guideText: '오늘은 딱 1~2개만 해요. 가장 쉬운 것 하나면 충분해요.',
-    warningText: '방전 상태에서는 1개가 최선이에요. 돌아올 수 있는 게 목표예요.',
-    color: 'text-red-600',
-    bg: 'bg-red-50',
-    border: 'border-red-200',
-  },
-  mid: {
-    emoji: '🟡',
-    label: '보통이에요',
-    maxSelect: 3,
-    recommendedMax: 2,
-    guideText: '2~3개를 권장해요. 무리하지 않는 선에서 골라보세요.',
-    warningText: '많이 적는 것보다 돌아올 수 있게 만드는 것이 목표예요.',
-    color: 'text-amber-600',
-    bg: 'bg-amber-50',
-    border: 'border-amber-200',
-  },
-  high: {
-    emoji: '🟢',
-    label: '에너지 충분',
-    maxSelect: 5,
-    recommendedMax: 3,
-    guideText: '최대 5개까지 선택할 수 있어요. 어려운 것도 도전해봐요.',
-    warningText: '3개 이상은 욕심일 수 있어요. 한 번 더 생각해봐요.',
-    color: 'text-green-600',
-    bg: 'bg-green-50',
-    border: 'border-green-200',
-  },
-}
-
 export default function TaskSelectPage() {
   const router = useRouter()
   const [classifyResult, setClassifyResult] = useState<ClassifyDumpResponse | null>(null)
   const [energyLevel, setEnergyLevel] = useState<EnergyLevel | null>(null)
   const [selected, setSelected] = useState<string[]>([])
   const [priorities, setPriorities] = useState<Record<string, Priority>>({})
+  const [taskContexts, setTaskContexts] = useState<Record<string, { where: string }>>({})
 
   useEffect(() => {
     const stored = sessionStorage.getItem('classifyResult')
-    const storedEnergy = sessionStorage.getItem('energyLevel') as EnergyLevel | null
-
     if (!stored) {
       router.replace('/brain-dump')
       return
     }
-    if (!storedEnergy) {
-      router.replace('/energy-select')
-      return
-    }
-
     setClassifyResult(JSON.parse(stored) as ClassifyDumpResponse)
-    setEnergyLevel(storedEnergy)
+
+    const storedEnergy = sessionStorage.getItem('energyLevel') as EnergyLevel | null
+    if (storedEnergy) {
+      setEnergyLevel(storedEnergy)
+    } else {
+      router.replace('/energy-select')
+    }
   }, [])
 
   const config = energyLevel ? ENERGY_CONFIG[energyLevel] : null
@@ -95,6 +49,7 @@ export default function TaskSelectPage() {
     setSelected((prev) => {
       if (prev.includes(task)) {
         setPriorities((p) => { const n = { ...p }; delete n[task]; return n })
+        setTaskContexts((p) => { const n = { ...p }; delete n[task]; return n })
         return prev.filter((t) => t !== task)
       }
       if (prev.length >= config.maxSelect) return prev
@@ -112,14 +67,19 @@ export default function TaskSelectPage() {
     const sorted = [...selected].sort((a, b) =>
       PRIORITY_ORDER[priorities[a] ?? 'yellow'] - PRIORITY_ORDER[priorities[b] ?? 'yellow']
     )
+    const serializedContexts: Record<string, string> = {}
+    for (const [task, ctx] of Object.entries(taskContexts)) {
+      if (ctx.where) serializedContexts[task] = `어디서: ${ctx.where}`
+    }
     sessionStorage.setItem('selectedTasks', JSON.stringify(sorted))
     sessionStorage.setItem('taskPriorities', JSON.stringify(priorities))
+    sessionStorage.setItem('taskContexts', JSON.stringify(serializedContexts))
     sessionStorage.setItem('postitItems', JSON.stringify([]))
     sessionStorage.setItem('currentTaskIndex', '0')
     router.push('/postit-loop')
   }
 
-  if (!classifyResult || !config) {
+  if (!classifyResult || !energyLevel) {
     return (
       <AppShell>
         <div className="flex min-h-screen justify-center items-center">
@@ -129,13 +89,13 @@ export default function TaskSelectPage() {
     )
   }
 
+  // ── 할 일 선택 화면 ──────────────────────────────────────────
   const { fixedSchedule, taskCandidates } = classifyResult
 
   return (
     <AppShell>
       <div className="flex flex-col min-h-screen py-6 animate-fade-in">
 
-        {/* 헤더 */}
         <div className="space-y-1 mb-4">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-2 h-2 rounded-full bg-amber-400" />
@@ -149,19 +109,18 @@ export default function TaskSelectPage() {
               onClick={() => router.push('/energy-select')}
               className={[
                 'flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border transition-all',
-                config.bg, config.border, config.color,
+                config!.bg, config!.border, config!.color,
               ].join(' ')}
             >
-              {config.emoji} {config.label}
+              {config!.emoji} {config!.label}
               <svg className="w-3 h-3 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 11l6.536-6.536a2 2 0 112.828 2.828L11.828 13.828A2 2 0 0110 14H8v-2a2 2 0 01.586-1.414z" />
               </svg>
             </button>
           </div>
-          <p className="text-sm text-slate-500">{config.guideText}</p>
+          <p className="text-sm text-slate-500">{config!.guideText}</p>
         </div>
 
-        {/* 고정 일정 */}
         {fixedSchedule.length > 0 && (
           <div className="mb-4">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">오늘 고정 일정</p>
@@ -176,12 +135,11 @@ export default function TaskSelectPage() {
           </div>
         )}
 
-        {/* 할 일 후보 */}
         <div className="flex-1 mb-4">
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">오늘 실행 후보</p>
-            <span className={['text-xs font-medium', config.color].join(' ')}>
-              {selected.length}/{config.maxSelect} 선택됨
+            <span className={['text-xs font-medium', config!.color].join(' ')}>
+              {selected.length}/{config!.maxSelect} 선택됨
             </span>
           </div>
 
@@ -195,7 +153,7 @@ export default function TaskSelectPage() {
             <div className="space-y-2">
               {taskCandidates.map((task, i) => {
                 const isSelected = selected.includes(task)
-                const isDisabled = !isSelected && selected.length >= config.maxSelect
+                const isDisabled = !isSelected && selected.length >= config!.maxSelect
                 const activePriority = priorities[task] ?? 'yellow'
                 return (
                   <div
@@ -237,26 +195,45 @@ export default function TaskSelectPage() {
                     </button>
 
                     {isSelected && (
-                      <div className="border-t border-amber-200 bg-white px-3 py-3 animate-fade-in">
-                        <p className="text-xs font-semibold text-slate-500 mb-2">언제 할 건가요?</p>
-                        <div className="flex gap-2">
-                          {PRIORITY_OPTIONS.map((opt) => {
-                            const isActive = activePriority === opt.value
-                            return (
-                              <button
-                                key={opt.value}
-                                onClick={() => setPriority(task, opt.value)}
-                                className={[
-                                  'flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 transition-all',
-                                  isActive
-                                    ? opt.active
-                                    : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300',
-                                ].join(' ')}
-                              >
-                                {opt.label}
-                              </button>
-                            )
-                          })}
+                      <div className="border-t border-amber-200 bg-white px-3 py-3 animate-fade-in space-y-3">
+                        <div>
+                          <p className="text-xs font-semibold text-slate-500 mb-2">언제 할 건가요?</p>
+                          <div className="flex gap-2">
+                            {PRIORITY_OPTIONS.map((opt) => {
+                              const isActive = activePriority === opt.value
+                              return (
+                                <button
+                                  key={opt.value}
+                                  onClick={() => setPriority(task, opt.value)}
+                                  className={[
+                                    'flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 transition-all',
+                                    isActive
+                                      ? opt.active
+                                      : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300',
+                                  ].join(' ')}
+                                >
+                                  {opt.label}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <p className="text-xs font-semibold text-slate-500 mb-2">
+                            어디서 할 건가요?
+                            <span className="font-normal text-slate-400 ml-1">(선택)</span>
+                          </p>
+                          <input
+                            type="text"
+                            value={taskContexts[task]?.where || ''}
+                            onChange={(e) => setTaskContexts((prev) => ({
+                              ...prev,
+                              [task]: { where: e.target.value },
+                            }))}
+                            placeholder="예: 카페에서, 집 책상에서"
+                            className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 text-slate-700 placeholder-slate-300 focus:border-amber-400 focus:ring-1 focus:ring-amber-200 transition-all bg-slate-50"
+                            maxLength={30}
+                          />
                         </div>
                       </div>
                     )}
@@ -267,16 +244,14 @@ export default function TaskSelectPage() {
           )}
         </div>
 
-        {/* 초과 경고 */}
-        {selected.length > config.recommendedMax && (
+        {selected.length > config!.recommendedMax && (
           <Card variant="highlight" className="mb-4">
             <p className="text-xs text-amber-700 leading-relaxed">
-              {config.warningText}
+              {config!.warningText}
             </p>
           </Card>
         )}
 
-        {/* 방전 상태 특별 메시지 */}
         {energyLevel === 'low' && selected.length === 0 && (
           <Card className="mb-4">
             <p className="text-xs text-slate-500 leading-relaxed">
@@ -285,7 +260,6 @@ export default function TaskSelectPage() {
           </Card>
         )}
 
-        {/* 버튼 */}
         <div className="space-y-3 safe-bottom">
           <Button onClick={handleNext} disabled={selected.length === 0}>
             {Object.values(priorities).includes('red')

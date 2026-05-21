@@ -126,7 +126,7 @@ export default function ProfilePage() {
   async function handleSignOut() {
     const supabase = createClient()
     await supabase.auth.signOut()
-    router.push('/')
+    router.push('/brain-dump')
   }
 
   if (loading) {
@@ -158,7 +158,7 @@ export default function ProfilePage() {
               로그인하러 가기
             </Link>
             <Link
-              href="/brain-dump"
+              href="/grounding"
               className="block w-full py-4 text-lg font-semibold text-center text-slate-600 bg-white rounded-full border-2 border-slate-200"
             >
               계속 체험하기
@@ -183,7 +183,7 @@ export default function ProfilePage() {
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-slate-800">나의 성장</h1>
           <button
-            onClick={() => router.push('/brain-dump')}
+            onClick={() => router.push('/grounding')}
             className="text-sm text-amber-600 font-medium hover:text-amber-700 transition-colors"
           >
             오늘 계획 만들기 →
@@ -312,7 +312,7 @@ export default function ProfilePage() {
 
         {/* Actions */}
         <div className="pt-4 pb-6 space-y-3 safe-bottom">
-          <Button onClick={() => router.push('/brain-dump')}>
+          <Button onClick={() => router.push('/grounding')}>
             오늘 계획 만들러 가기
           </Button>
           <Button variant="secondary" onClick={() => router.push('/guide')}>

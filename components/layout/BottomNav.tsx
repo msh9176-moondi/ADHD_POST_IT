@@ -5,15 +5,6 @@ import { usePathname } from 'next/navigation'
 
 const NAV_ITEMS = [
   {
-    href: '/nfc',
-    label: 'NFC',
-    icon: (active: boolean) => (
-      <svg className={['w-6 h-6', active ? 'text-amber-500' : 'text-slate-400'].join(' ')} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18" />
-      </svg>
-    ),
-  },
-  {
     href: '/brain-dump',
     label: '브레인덤프',
     icon: (active: boolean) => (
@@ -43,7 +34,7 @@ const NAV_ITEMS = [
 ]
 
 // 위자드 플로우 중간 페이지는 네비게이션 숨김
-const HIDDEN_PATHS = ['/energy-select', '/task-select', '/postit-loop', '/time-arrange', '/auth', '/setup', '/guide', '/grounding', '/scan', '/timer', '/postit-location']
+const HIDDEN_PATHS = ['/energy-select', '/task-select', '/postit-loop', '/time-arrange', '/auth', '/setup', '/guide', '/grounding', '/scan', '/timer', '/postit-location', '/write-postit']
 
 export default function BottomNav() {
   const pathname = usePathname()

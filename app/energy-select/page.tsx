@@ -3,33 +3,10 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ClassifyDumpResponse } from '@/types'
+import { EnergyLevel, ENERGY_CONFIG } from '@/lib/config/energyLevels'
 import AppShell from '@/components/layout/AppShell'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
-
-type EnergyLevel = 'low' | 'mid' | 'high'
-
-const ENERGY_CONFIG: Record<EnergyLevel, {
-  emoji: string
-  label: string
-  desc: string
-}> = {
-  low: {
-    emoji: '🔴',
-    label: '방전됨',
-    desc: '의욕이 거의 없고 지쳐있어요',
-  },
-  mid: {
-    emoji: '🟡',
-    label: '보통이에요',
-    desc: '그럭저럭 할 수 있을 것 같아요',
-  },
-  high: {
-    emoji: '🟢',
-    label: '에너지 충분',
-    desc: '오늘은 잘 할 수 있을 것 같아요',
-  },
-}
 
 export default function EnergySelectPage() {
   const router = useRouter()
@@ -77,7 +54,6 @@ export default function EnergySelectPage() {
           </p>
         </div>
 
-        {/* 감정/에너지 힌트 */}
         {(emotionOrAvoidanceSignals.length > 0 || energyNotes.length > 0) && (
           <Card variant="highlight" className="mb-6">
             <div className="space-y-2">
@@ -109,7 +85,6 @@ export default function EnergySelectPage() {
           </Card>
         )}
 
-        {/* 에너지 선택 버튼 */}
         <div className="flex-1 flex flex-col gap-3">
           {(['low', 'mid', 'high'] as EnergyLevel[]).map((level) => {
             const c = ENERGY_CONFIG[level]

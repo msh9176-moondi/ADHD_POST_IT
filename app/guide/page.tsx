@@ -81,7 +81,7 @@ function GuideContent() {
 
   function goNext() {
     if (isLast) {
-      router.push(from === 'setup' ? '/nfc' : '/brain-dump')
+      router.push('/grounding')
     } else {
       setStepIndex(i => i + 1)
     }
@@ -146,7 +146,7 @@ function GuideContent() {
           )}
           {!isLast && (
             <button
-              onClick={() => router.push(from === 'setup' ? '/nfc' : '/brain-dump')}
+              onClick={() => router.push('/grounding')}
               className="w-full text-center text-sm text-slate-300 hover:text-slate-500 transition-colors py-1"
             >
               건너뛰기

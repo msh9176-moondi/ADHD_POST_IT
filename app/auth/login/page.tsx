@@ -4,6 +4,7 @@ import { useState, FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { grantXP } from '@/lib/xp/reward'
 import AppShell from '@/components/layout/AppShell'
 import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
@@ -28,7 +29,7 @@ export default function LoginPage() {
 
     try {
       if (mode === 'login') {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         })
@@ -36,7 +37,10 @@ export default function LoginPage() {
           setMessage({ type: 'error', text: '이메일 또는 비밀번호를 다시 확인해볼까요?' })
           return
         }
-        router.push('/nfc')
+        if (data.user) {
+          await grantXP(supabase, data.user.id, 'nfc_tag')
+        }
+        router.push('/grounding')
         router.refresh()
       } else {
         const { data, error } = await supabase.auth.signUp({
@@ -68,13 +72,6 @@ export default function LoginPage() {
   return (
     <AppShell>
       <div className="flex flex-col min-h-screen py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <Link href="/" className="text-sm text-slate-400 hover:text-slate-600 transition-colors">
-            ← 돌아가기
-          </Link>
-        </div>
-
         <div className="flex-1 flex flex-col justify-center">
           {/* Title */}
           <div className="text-center mb-8">
@@ -184,7 +181,7 @@ export default function LoginPage() {
           <div className="mt-6 text-center">
             <p className="text-sm text-slate-400 mb-3">계정 없이도 사용할 수 있어요</p>
             <Link
-              href="/brain-dump"
+              href="/grounding"
               className="text-sm font-medium text-amber-600 hover:text-amber-700 underline underline-offset-2"
             >
               게스트로 체험하기

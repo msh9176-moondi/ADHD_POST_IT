@@ -75,20 +75,6 @@ export interface DailyPostitItem {
   priority?: 'red' | 'yellow' | 'green'
 }
 
-export interface ConvertPlanResponse {
-  immediateTasks: string[]
-  laterTasks: string[]
-  emotionOrAvoidanceSignals: string[]
-  recommendedTask: string
-  taskType: 'work' | 'study' | 'health' | 'home' | 'admin' | 'relationship' | 'recovery' | 'unknown'
-  difficultyLevel: 'very_easy' | 'easy' | 'medium'
-  estimatedStartTime: '3분' | '5분' | '10분'
-  finalPostitSentence: string
-  backupTinyAction: string
-  ifThenPlan: string
-  rewardSuggestion: string
-  reason: string
-}
 
 export type RewardType = 'nfc_tag' | 'brain_dump' | 'plan_sentence' | 'postit_written' | 'return_bonus'
 

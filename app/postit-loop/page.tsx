@@ -14,6 +14,7 @@ export default function PostitLoopPage() {
   const [converting, setConverting] = useState(false)
   const [currentResult, setCurrentResult] = useState<ConvertTaskResponse | null>(null)
   const [emotionContext, setEmotionContext] = useState<string>('')
+  const [taskContexts, setTaskContexts] = useState<Record<string, string>>({})
   const [shrinkLevel, setShrinkLevel] = useState(0)
   const [cantDoOpen, setCantDoOpen] = useState(false)
 
@@ -31,10 +32,14 @@ export default function PostitLoopPage() {
     const parsedTasks: string[] = JSON.parse(storedTasks)
     const parsedItems: DailyPostitItem[] = storedItems ? JSON.parse(storedItems) : []
     const parsedIndex = storedIndex ? parseInt(storedIndex, 10) : 0
+    const parsedContexts: Record<string, string> = sessionStorage.getItem('taskContexts')
+      ? JSON.parse(sessionStorage.getItem('taskContexts')!)
+      : {}
 
     setTasks(parsedTasks)
     setItems(parsedItems)
     setCurrentIndex(parsedIndex)
+    setTaskContexts(parsedContexts)
 
     let emotionCtx = ''
     if (storedClassify) {
@@ -54,38 +59,42 @@ export default function PostitLoopPage() {
     }
 
     if (parsedIndex < parsedTasks.length && parsedItems.length <= parsedIndex) {
-      convertTask(parsedTasks[parsedIndex], emotionCtx, 0)
+      const taskCtx = parsedContexts[parsedTasks[parsedIndex]] || ''
+      convertTask(parsedTasks[parsedIndex], taskCtx, emotionCtx, 0)
     }
   }, [])
 
-  async function convertTask(task: string, context: string, shrink: number) {
+  async function convertTask(task: string, taskContext: string, emotionCtx: string, shrink: number) {
     setConverting(true)
     setCurrentResult(null)
     setShrinkLevel(shrink)
     setCantDoOpen(false)
 
-    let ctx = context
+    let shrinkHint = ''
     if (shrink === 1) {
-      ctx = `${context ? context + ', ' : ''}이것보다 훨씬 더 작게 줄여줘. 1분 안에 끝낼 수 있는 가장 작은 첫 행동으로`
-    } else if (shrink >= 2) {
-      ctx = `${context ? context + ', ' : ''}30초 이내에 끝낼 수 있는 최소 행동. 파일 열기, 앱 열기, 자리에 앉기 수준으로`
+      shrinkHint = '더 구체적인 첫 행동으로 바꿔줘. 예: "청소하기" → "청소도구 꺼내기", "공부하기" → "교재 47페이지 펴기"처럼 실제로 무엇을 할지 명확하게'
+    } else if (shrink === 2) {
+      shrinkHint = '한 단계 더 구체적으로. 손이 실제로 어디에 닿는지, 무엇을 집는지까지 보이는 문장으로'
+    } else if (shrink >= 3) {
+      shrinkHint = `지금까지 나온 문장보다 더 구체적으로. 장소, 도구, 행동이 모두 명확한 한 문장으로. 변환 ${shrink}회차`
     }
+    const emotionFull = [emotionCtx, shrinkHint].filter(Boolean).join('. ')
 
     try {
       const res = await fetch('/api/convert-task', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ task, context: ctx }),
+        body: JSON.stringify({ task, taskContext, emotionContext: emotionFull }),
       })
       const result: ConvertTaskResponse = await res.json()
       setCurrentResult(result)
     } catch {
       setCurrentResult({
         originalTask: task,
-        finalPostitSentence: `${task.slice(0, 15)} 파일 열기. 3분만.`,
-        backupTinyAction: '파일만 열기.',
+        finalPostitSentence: '타이머 켜고 3분만 앉아 있기.',
+        backupTinyAction: '타이머만 켜기.',
         estimatedStartTime: '3분',
-        reason: '첫 번째 행동으로 줄였습니다.',
+        reason: '시작이 목표예요.',
         rewardSuggestion: '유튜브 10분 봐도 돼',
       })
     } finally {
@@ -118,13 +127,12 @@ export default function PostitLoopPage() {
       setCurrentIndex(nextIndex)
       setCurrentResult(null)
       setShrinkLevel(0)
-      convertTask(tasks[nextIndex], emotionContext, 0)
+      convertTask(tasks[nextIndex], taskContexts[tasks[nextIndex]] || '', emotionContext, 0)
     }
   }
 
   function handleShrink() {
-    const next = Math.min(shrinkLevel + 1, 2)
-    convertTask(tasks[currentIndex], emotionContext, next)
+    convertTask(tasks[currentIndex], taskContexts[tasks[currentIndex]] || '', emotionContext, shrinkLevel + 1)
   }
 
   function handleUseBackup() {
@@ -153,7 +161,7 @@ export default function PostitLoopPage() {
     setCurrentIndex(nextIndex)
     setCurrentResult(null)
     setShrinkLevel(0)
-    convertTask(tasks[nextIndex], emotionContext, 0)
+    convertTask(tasks[nextIndex], taskContexts[tasks[nextIndex]] || '', emotionContext, 0)
   }
 
   function handleStopForToday() {
@@ -205,6 +213,11 @@ export default function PostitLoopPage() {
         <div className="mb-4 bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3 space-y-1">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">원래 할 일</p>
           <p className="text-slate-700 text-base leading-snug">{currentTask}</p>
+          {taskContexts[currentTask] && (
+            <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-2 py-1 mt-1">
+              💬 {taskContexts[currentTask]}
+            </p>
+          )}
         </div>
 
         {/* Converting state */}
@@ -212,7 +225,7 @@ export default function PostitLoopPage() {
           <div className="flex-1 flex flex-col items-center justify-center gap-4 py-8">
             <div className="w-12 h-12 border-4 border-amber-400 border-t-transparent rounded-full animate-spin" />
             <p className="text-sm text-amber-700 font-medium">
-              {shrinkLevel === 0 ? '10분 행동으로 줄이는 중...' : shrinkLevel === 1 ? '더 작게 줄이는 중...' : '최소 행동으로 줄이는 중...'}
+              {shrinkLevel === 0 ? '10분 행동으로 변환하는 중...' : '다시 변환하는 중...'}
             </p>
           </div>
         )}
@@ -225,8 +238,8 @@ export default function PostitLoopPage() {
               <div className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium ${
                 shrinkLevel === 1 ? 'bg-blue-50 text-blue-700' : 'bg-green-50 text-green-700'
               }`}>
-                <span>{shrinkLevel === 1 ? '🔽' : '🔽🔽'}</span>
-                <span>{shrinkLevel === 1 ? '한 단계 더 작게 줄였어요' : '최소 행동으로 줄였어요'}</span>
+                <span>🔄</span>
+                <span>{`더 구체적으로 변환했어요 (${shrinkLevel}회)`}</span>
               </div>
             )}
 
@@ -258,11 +271,9 @@ export default function PostitLoopPage() {
             </Button>
 
             <div className="flex gap-2">
-              {shrinkLevel < 2 && (
-                <Button variant="secondary" size="md" className="flex-1" onClick={handleShrink}>
-                  더 작게 줄여줘 🔽
-                </Button>
-              )}
+              <Button variant="secondary" size="md" className="flex-1" onClick={handleShrink}>
+                다시 변환하기 🔄
+              </Button>
               <Button
                 variant="ghost"
                 size="md"
@@ -302,10 +313,9 @@ export default function PostitLoopPage() {
 
               <button
                 onClick={handleShrink}
-                disabled={shrinkLevel >= 2}
-                className="w-full py-3.5 bg-slate-50 border-2 border-slate-200 rounded-2xl text-sm font-semibold text-slate-700 hover:border-slate-300 transition-all disabled:opacity-50"
+                className="w-full py-3.5 bg-slate-50 border-2 border-slate-200 rounded-2xl text-sm font-semibold text-slate-700 hover:border-slate-300 transition-all"
               >
-                더 작게 줄여줘 🔽
+                다시 변환하기 🔄
               </button>
 
               <div className="flex gap-2">
