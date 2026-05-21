@@ -131,12 +131,19 @@ export default function SetupPage() {
                 </div>
 
                 <div className="relative cursor-pointer" onClick={showPicker}>
+                  <div className="w-full flex items-center justify-between bg-amber-50 border-2 border-amber-200 rounded-2xl py-6 px-6 hover:border-amber-400 active:bg-amber-100 transition-all">
+                    <div className="w-8" />
+                    <span className="text-3xl font-bold text-slate-800">{planTime}</span>
+                    <div className="w-8 flex justify-end">
+                      <span className="text-xl">✏️</span>
+                    </div>
+                  </div>
                   <input
                     ref={timeInputRef}
                     type="time"
                     value={planTime}
                     onChange={(e) => setPlanTime(e.target.value)}
-                    className="w-full text-3xl font-bold text-center text-slate-800 bg-amber-50 border-2 border-amber-200 rounded-2xl py-6 focus:border-amber-400 focus:ring-2 focus:ring-amber-200 transition-all cursor-pointer pointer-events-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+                    className="absolute inset-0 opacity-0 pointer-events-none"
                   />
                 </div>
 
