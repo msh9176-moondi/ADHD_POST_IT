@@ -58,7 +58,7 @@ export default function TimeArrangePage() {
     if (parsed.length === 0) { router.replace('/task-select'); return }
     setItems(parsed)
     const initial: Record<string, string> = {}
-    parsed.forEach((item) => { initial[item.id] = '' })
+    parsed.forEach((item) => { initial[item.id] = item.startTime || '' })
     setTimes(initial)
   }, [])
 

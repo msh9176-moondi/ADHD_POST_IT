@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { DailyPostitItem } from '@/types'
 import { createClient } from '@/lib/supabase/client'
@@ -26,27 +26,22 @@ export default function WritePostitPage() {
   const [items, setItems] = useState<DailyPostitItem[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [writtenLines, setWrittenLines] = useState<WrittenLine[]>([])
-  const [currentTime, setCurrentTime] = useState('')
   const [xpGranted, setXpGranted] = useState(false)
-  const timeInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     const stored = sessionStorage.getItem('postitItems')
     if (!stored) { router.replace('/brain-dump'); return }
     const parsed: DailyPostitItem[] = JSON.parse(stored)
     if (parsed.length === 0) { router.replace('/brain-dump'); return }
-    setItems(parsed)
-    setCurrentTime(toDisplayTime(parsed[0]?.startTime))
+    const sorted = [...parsed].sort((a, b) => {
+      const ta = a.startTime || '99:99'
+      const tb = b.startTime || '99:99'
+      return ta < tb ? -1 : ta > tb ? 1 : 0
+    })
+    setItems(sorted)
   }, [])
 
-  useEffect(() => {
-    if (items.length > 0 && currentIndex < items.length) {
-      setCurrentTime(toDisplayTime(items[currentIndex]?.startTime))
-      setTimeout(() => timeInputRef.current?.focus(), 100)
-    }
-  }, [currentIndex, items])
-
-  async function advance(time: string) {
+  async function advance() {
     if (!xpGranted) {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
@@ -56,10 +51,9 @@ export default function WritePostitPage() {
       }
     }
 
-    const newLines = [...writtenLines, { time, sentence: items[currentIndex].finalPostitSentence }]
-    setWrittenLines(newLines)
-
     if (currentIndex < items.length - 1) {
+      const time = toDisplayTime(items[currentIndex]?.startTime)
+      setWrittenLines((prev) => [...prev, { time, sentence: items[currentIndex].finalPostitSentence }])
       setCurrentIndex((i) => i + 1)
     } else {
       router.push('/postit-location')
@@ -128,15 +122,9 @@ export default function WritePostitPage() {
               {/* 현재 줄 (입력 중) */}
               <div className="flex items-start border-b-2 border-amber-600/40 bg-white/30 px-3 py-2.5 animate-fade-in">
                 <div className="w-20 flex-shrink-0">
-                  <input
-                    ref={timeInputRef}
-                    type="text"
-                    value={currentTime}
-                    onChange={(e) => setCurrentTime(e.target.value)}
-                    placeholder="시간?"
-                    className="w-full text-xs text-amber-900 bg-transparent border-none outline-none text-center placeholder-amber-600/60 font-semibold"
-                    maxLength={12}
-                  />
+                  <span className="block w-full text-xs text-amber-900 text-center font-semibold leading-snug">
+                    {toDisplayTime(item.startTime) || '—'}
+                  </span>
                 </div>
                 <div className="w-px self-stretch bg-amber-500/40 mx-1 flex-shrink-0" />
                 <span className="text-sm text-slate-800 leading-snug font-semibold">
@@ -176,11 +164,11 @@ export default function WritePostitPage() {
 
         {/* 버튼 */}
         <div className="space-y-3 mt-6 safe-bottom">
-          <Button onClick={() => advance(currentTime)}>
+          <Button onClick={advance}>
             ✏️ {total > 1 ? `${currentIndex + 1}번째 다 썼어요! (${currentIndex + 1}/${total})` : '다 썼어요!'}
           </Button>
           <button
-            onClick={() => advance('')}
+            onClick={advance}
             className="w-full py-3 text-sm text-slate-400 hover:text-slate-600 transition-colors"
           >
             지금은 못 쓰겠어요, 그냥 시작할게요 →

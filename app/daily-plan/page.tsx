@@ -215,7 +215,7 @@ export default function DailyPlanPage() {
     const sorted = [...parsed].sort((a, b) => {
       const ta = a.startTime || '99:99'
       const tb = b.startTime || '99:99'
-      return ta.localeCompare(tb)
+      return ta < tb ? -1 : ta > tb ? 1 : 0
     })
     setItems(sorted)
 
