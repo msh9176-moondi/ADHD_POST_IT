@@ -10,6 +10,7 @@ import Card from '@/components/ui/Card'
 export default function SetupPage() {
   const router = useRouter()
   const [planTime, setPlanTime] = useState('09:00')
+  const [isEdit, setIsEdit] = useState(false)
   const [loading, setLoading] = useState(false)
   const [checking, setChecking] = useState(true)
   const supabase = createClient()
@@ -22,7 +23,6 @@ export default function SetupPage() {
         return
       }
 
-      // Check if plan_time is already set
       const { data: profile } = await supabase
         .from('profiles')
         .select('plan_time')
@@ -30,9 +30,8 @@ export default function SetupPage() {
         .single()
 
       if (profile?.plan_time) {
-        // Already set up, go to brain-dump
-        router.replace('/brain-dump')
-        return
+        setPlanTime(profile.plan_time)
+        setIsEdit(true)
       }
 
       setChecking(false)
@@ -62,7 +61,7 @@ export default function SetupPage() {
         return
       }
 
-      router.push('/guide?from=setup')
+      router.push(isEdit ? '/profile' : '/guide?from=setup')
     } finally {
       setLoading(false)
     }
@@ -181,10 +180,10 @@ export default function SetupPage() {
               </Button>
               <button
                 type="button"
-                onClick={() => router.push('/brain-dump')}
+                onClick={() => router.push(isEdit ? '/profile' : '/brain-dump')}
                 className="w-full mt-3 py-3 text-sm text-slate-400 hover:text-slate-600 transition-colors"
               >
-                지금은 건너뛰기
+                {isEdit ? '취소' : '지금은 건너뛰기'}
               </button>
             </div>
           </form>
