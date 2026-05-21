@@ -136,7 +136,7 @@ export default function SetupPage() {
                     type="time"
                     value={planTime}
                     onChange={(e) => setPlanTime(e.target.value)}
-                    className="w-full text-3xl font-bold text-center text-slate-800 bg-amber-50 border-2 border-amber-200 rounded-2xl py-6 focus:border-amber-400 focus:ring-2 focus:ring-amber-200 transition-all cursor-pointer pointer-events-none"
+                    className="w-full text-3xl font-bold text-center text-slate-800 bg-amber-50 border-2 border-amber-200 rounded-2xl py-6 focus:border-amber-400 focus:ring-2 focus:ring-amber-200 transition-all cursor-pointer pointer-events-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
                   />
                 </div>
 
