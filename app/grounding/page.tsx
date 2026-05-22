@@ -32,17 +32,99 @@ function buzz(pattern: number | number[]) {
 }
 
 const ROUTINES = [
-  { id: 'doodle' as RoutineType, icon: '✏️', title: '낙서 진입', desc: '화면에 아무 선이나 그어보세요', dur: '자유' },
+  { id: 'doodle' as RoutineType, icon: '✏️', title: '패턴 따라그리기', desc: '통로를 따라 손가락으로 그어보세요', dur: '자유' },
   { id: 'eye' as RoutineType, icon: '👁', title: '시선 이동', desc: '움직이는 점을 눈으로 따라가세요', dur: '약 30초' },
   { id: 'sensory' as RoutineType, icon: '🌿', title: '감각 체크', desc: '지금 이 순간 감각 3가지 찾기', dur: '약 1분' },
   { id: 'breath' as RoutineType, icon: '🫁', title: '짧은 호흡', desc: '숨 들이마시고 내쉬기 3회', dur: '약 30초' },
 ]
 
-// ── 낙서 진입 ────────────────────────────────────────────────
-function DoodleRoutine({ onDone }: { onDone: () => void }) {
+// ── 패턴 따라그리기 ────────────────────────────────────────────────
+type PatternPoint = [number, number]
+
+const TRACE_PATTERNS: { id: string; name: string; points: PatternPoint[] }[] = [
+  {
+    id: 's',
+    name: 'S자 구불길',
+    points: [[0.08,0.15],[0.92,0.15],[0.92,0.50],[0.08,0.50],[0.08,0.85],[0.92,0.85]],
+  },
+  {
+    id: 'spiral',
+    name: '나선 길',
+    points: [
+      [0.08,0.12],[0.92,0.12],[0.92,0.88],[0.14,0.88],
+      [0.14,0.28],[0.80,0.28],[0.80,0.72],[0.26,0.72],[0.26,0.44],[0.64,0.44],
+    ],
+  },
+  {
+    id: 'zigzag',
+    name: '지그재그',
+    points: [[0.08,0.20],[0.33,0.80],[0.58,0.20],[0.83,0.80],[0.92,0.60]],
+  },
+]
+
+function drawGuide(canvas: HTMLCanvasElement, points: PatternPoint[]) {
+  const ctx = canvas.getContext('2d')!
+  const w = canvas.width
+  const h = canvas.height
+  const pts = points.map(([px, py]) => [px * w, py * h] as [number, number])
+
+  ctx.clearRect(0, 0, w, h)
+
+  ctx.save()
+  ctx.beginPath()
+  ctx.moveTo(pts[0][0], pts[0][1])
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1])
+  ctx.strokeStyle = 'rgba(251,191,36,0.28)'
+  ctx.lineWidth = 34
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  ctx.stroke()
+  ctx.restore()
+
+  ctx.save()
+  ctx.beginPath()
+  ctx.moveTo(pts[0][0], pts[0][1])
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1])
+  ctx.strokeStyle = 'rgba(180,83,9,0.28)'
+  ctx.lineWidth = 1.5
+  ctx.setLineDash([7, 6])
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  ctx.stroke()
+  ctx.restore()
+
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(pts[0][0], pts[0][1], 11, 0, Math.PI * 2)
+  ctx.fillStyle = '#22c55e'
+  ctx.fill()
+  ctx.font = 'bold 9px sans-serif'
+  ctx.fillStyle = 'white'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('시작', pts[0][0], pts[0][1])
+  ctx.restore()
+
+  const last = pts[pts.length - 1]
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(last[0], last[1], 11, 0, Math.PI * 2)
+  ctx.fillStyle = '#f59e0b'
+  ctx.fill()
+  ctx.font = 'bold 9px sans-serif'
+  ctx.fillStyle = 'white'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('끝', last[0], last[1])
+  ctx.restore()
+}
+
+function TraceRoutine({ onDone }: { onDone: () => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const drawing = useRef(false)
   const [hasDrawn, setHasDrawn] = useState(false)
+  const [patternIdx] = useState(() => Math.floor(Math.random() * TRACE_PATTERNS.length))
+  const pattern = TRACE_PATTERNS[patternIdx]
 
   useEffect(() => {
     requestAnimationFrame(() => {
@@ -50,8 +132,9 @@ function DoodleRoutine({ onDone }: { onDone: () => void }) {
       if (!canvas) return
       canvas.width = canvas.offsetWidth || 360
       canvas.height = 260
+      drawGuide(canvas, pattern.points)
     })
-  }, [])
+  }, [pattern])
 
   function getPos(canvas: HTMLCanvasElement, e: React.TouchEvent | React.MouseEvent) {
     const rect = canvas.getBoundingClientRect()
@@ -66,6 +149,7 @@ function DoodleRoutine({ onDone }: { onDone: () => void }) {
     if (!canvas) return
     drawing.current = true
     const ctx = canvas.getContext('2d')!
+    ctx.setLineDash([])
     const { x, y } = getPos(canvas, e)
     ctx.beginPath()
     ctx.moveTo(x, y)
@@ -82,6 +166,7 @@ function DoodleRoutine({ onDone }: { onDone: () => void }) {
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
     ctx.strokeStyle = '#f59e0b'
+    ctx.setLineDash([])
     ctx.lineTo(x, y)
     ctx.stroke()
   }
@@ -91,8 +176,12 @@ function DoodleRoutine({ onDone }: { onDone: () => void }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="space-y-1">
-        <h2 className="text-xl font-bold text-slate-800">아무거나 그려보세요</h2>
-        <p className="text-sm text-slate-500">선이어도, 낙서여도 돼요. 손을 움직이는 것 자체가 목적이에요.</p>
+        <h2 className="text-xl font-bold text-slate-800">통로를 따라 그어보세요</h2>
+        <p className="text-sm text-slate-500">
+          <span className="font-semibold text-green-600">시작</span>에서{' '}
+          <span className="font-semibold text-amber-500">끝</span>까지 선을 이어보세요.
+        </p>
+        <p className="text-xs text-slate-400">{pattern.name} — 집중해서 손을 움직여 보세요.</p>
       </div>
       <canvas
         ref={canvasRef}
@@ -107,7 +196,7 @@ function DoodleRoutine({ onDone }: { onDone: () => void }) {
         onTouchEnd={endDraw}
       />
       <Button onClick={onDone} disabled={!hasDrawn}>
-        {hasDrawn ? '다 됐어요 →' : '화면에 선을 그어보세요'}
+        {hasDrawn ? '다 됐어요 →' : '통로를 따라 그어보세요'}
       </Button>
     </div>
   )
@@ -320,7 +409,7 @@ export default function GroundingPage() {
 
         {/* 루틴 본문 */}
         <div key={selected} className="flex-1 animate-fade-in">
-          {selected === 'doodle' && <DoodleRoutine onDone={proceed} />}
+          {selected === 'doodle' && <TraceRoutine onDone={proceed} />}
           {selected === 'eye' && <EyeRoutine onDone={proceed} />}
           {selected === 'sensory' && <SensoryRoutine onDone={proceed} />}
           {selected === 'breath' && <BreathRoutine onDone={proceed} />}
