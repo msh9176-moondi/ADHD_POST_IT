@@ -7,6 +7,28 @@ import Button from '@/components/ui/Button'
 
 type RoutineType = 'doodle' | 'eye' | 'sensory' | 'breath'
 
+function playTone(freq: number, dur: number, vol = 0.12) {
+  try {
+    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+    const ctx = new AudioCtx()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.type = 'sine'
+    osc.frequency.value = freq
+    gain.gain.setValueAtTime(vol, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur)
+    osc.start()
+    osc.stop(ctx.currentTime + dur)
+    ctx.close()
+  } catch {}
+}
+
+function buzz(pattern: number | number[]) {
+  try { navigator.vibrate?.(pattern) } catch {}
+}
+
 const ROUTINES = [
   { id: 'doodle' as RoutineType, icon: '✏️', title: '낙서 진입', desc: '화면에 아무 선이나 그어보세요', dur: '자유' },
   { id: 'eye' as RoutineType, icon: '👁', title: '시선 이동', desc: '움직이는 점을 눈으로 따라가세요', dur: '약 30초' },
@@ -103,6 +125,8 @@ function EyeRoutine({ onDone }: { onDone: () => void }) {
       const next = swingCount + 1
       setIsRight(r => !r)
       setSwingCount(next)
+      buzz(30)
+      playTone(520, 0.08)
       if (next >= TOTAL_SWINGS) setDone(true)
     }, SWING_MS)
     return () => clearTimeout(t)
@@ -195,13 +219,19 @@ function BreathRoutine({ onDone }: { onDone: () => void }) {
     const t = setTimeout(() => {
       if (phase === 'in') {
         setPhase('out')
+        buzz(60)
+        playTone(330, 0.4, 0.1)
       } else {
         const next = cycleCount + 1
         if (next >= TOTAL_CYCLES) {
           setDone(true)
+          buzz([80, 40, 80])
+          playTone(440, 0.6, 0.12)
         } else {
           setCycleCount(next)
           setPhase('in')
+          buzz(60)
+          playTone(440, 0.4, 0.1)
         }
       }
     }, ms)
@@ -273,9 +303,9 @@ export default function GroundingPage() {
       <div className="flex flex-col min-h-screen py-6 animate-fade-in">
         {/* 상단 안내 */}
         <div className="space-y-1 mb-6">
-          <h1 className="text-2xl font-bold text-slate-800">30초 현재화</h1>
+          <h1 className="text-2xl font-bold text-slate-800">30초 집중하기</h1>
           <p className="text-slate-500 text-sm leading-relaxed">
-            머릿속 소음을 30초만 낮춰볼게요.
+            지금 이 순간에 집중해볼게요.
           </p>
         </div>
 
