@@ -11,17 +11,19 @@ function playTone(freq: number, dur: number, vol = 0.12) {
   try {
     const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
     const ctx = new AudioCtx()
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.connect(gain)
-    gain.connect(ctx.destination)
-    osc.type = 'sine'
-    osc.frequency.value = freq
-    gain.gain.setValueAtTime(vol, ctx.currentTime)
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur)
-    osc.start()
-    osc.stop(ctx.currentTime + dur)
-    ctx.close()
+    ctx.resume().then(() => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.type = 'sine'
+      osc.frequency.value = freq
+      gain.gain.setValueAtTime(vol, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur)
+      osc.start()
+      osc.stop(ctx.currentTime + dur)
+      setTimeout(() => ctx.close(), (dur + 0.15) * 1000)
+    })
   } catch {}
 }
 
