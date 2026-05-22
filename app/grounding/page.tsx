@@ -302,7 +302,13 @@ function BreathRoutine({ onDone }: { onDone: () => void }) {
   const [phase, setPhase] = useState<'in' | 'out'>('in')
   const [cycleCount, setCycleCount] = useState(0)
   const [done, setDone] = useState(false)
+  const [started, setStarted] = useState(false)
   const TOTAL_CYCLES = 3
+
+  useEffect(() => {
+    const t = setTimeout(() => setStarted(true), 60)
+    return () => clearTimeout(t)
+  }, [])
 
   useEffect(() => {
     if (done) return
@@ -339,8 +345,8 @@ function BreathRoutine({ onDone }: { onDone: () => void }) {
         <div
           className="w-36 h-36 rounded-full bg-amber-300 flex items-center justify-center shadow-lg"
           style={{
-            transform: `scale(${phase === 'in' ? 1 : 0.65})`,
-            transition: `transform ${phase === 'in' ? 3000 : 5000}ms ease-in-out`,
+            transform: `scale(${!started ? 0.65 : phase === 'in' ? 1 : 0.65})`,
+            transition: started ? `transform ${phase === 'in' ? 3000 : 5000}ms ease-in-out` : 'none',
           }}
         >
           <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center">
